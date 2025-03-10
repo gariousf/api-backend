@@ -25,7 +25,7 @@ const config = {
       max: 60
    },
    gemini: {
-      model: 'gemini-1.5-pro',
+      model: 'gemini-1.0-pro',
       maxHistoryLength: 10
    }
 };
@@ -155,6 +155,26 @@ const listAvailableModels = async () => {
   }
 };
 
+// Add this function to provide fallback responses
+const getFallbackResponse = (message) => {
+  const fallbackResponses = [
+    "I'm currently experiencing high demand. Could you try again in a few minutes?",
+    "My systems are a bit busy right now. I'll be back to full capacity shortly!",
+    "I apologize for the inconvenience, but I'm temporarily unavailable. Please try again later."
+  ];
+  
+  return fallbackResponses[Math.floor(Math.random() * fallbackResponses.length)];
+};
+
+// Add a simple in-memory cache
+const responseCache = new Map();
+
+// Add a fallback service function
+const getResponseFromFallbackService = async (message) => {
+  // This could be another AI service or a simple rule-based response system
+  return `I'm currently experiencing technical difficulties. Your message was: "${message}"`;
+};
+
 // Modify the chat endpoint to better handle Gemini's context
 app.post('/chat', async (req, res) => {
    try {
@@ -162,6 +182,16 @@ app.post('/chat', async (req, res) => {
 
       if (!messages || !Array.isArray(messages)) {
          return res.status(400).json({ error: 'Invalid messages format' });
+      }
+
+      // Create a cache key from the last message
+      const lastMessage = messages[messages.length - 1].message;
+      const cacheKey = lastMessage.toLowerCase().trim();
+      
+      // Check cache first
+      if (responseCache.has(cacheKey)) {
+         console.log("Cache hit for:", cacheKey);
+         return res.json({ reply: responseCache.get(cacheKey) });
       }
 
       // Clean messages
@@ -229,10 +259,27 @@ app.post('/chat', async (req, res) => {
          .replace(/^Assistant:|^AI:/, '')
          .trim();
 
+      // Cache the response before returning
+      responseCache.set(cacheKey, botReply);
+      
       res.json({ reply: botReply });
 
    } catch (error) {
       console.error('Error in chat endpoint:', error);
+      
+      if (error.message?.includes('429') || error.message?.includes('quota')) {
+         try {
+            const fallbackResponse = await getResponseFromFallbackService(
+               recentMessages[recentMessages.length - 1]
+            );
+            return res.json({ reply: fallbackResponse });
+         } catch (fallbackError) {
+            console.error('Fallback service also failed:', fallbackError);
+            return res.status(503).json({ 
+               error: 'Service temporarily unavailable. Please try again later.'
+            });
+         }
+      }
       
       // More specific error handling
       if (error.message?.includes('SAFETY')) {
