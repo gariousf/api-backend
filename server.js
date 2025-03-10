@@ -13,7 +13,7 @@ const config = {
    allowedOrigins: [
       'https://www.billybear.fun',  // No trailing slash
       'https://billybear.fun',      // Add non-www version
-      'https://billybear-chat-server.vercel.app', // Add Vercel domain
+      'https://billybear-dknx.vercel.app', // Add Vercel domain
       'http://localhost:80',
       'http://localhost:5500',
       'http://127.0.0.1:5500',
@@ -243,7 +243,13 @@ app.use((err, req, res, next) => {
    res.status(500).json({ error: 'Internal server error' });
 });
 
-// Start server
-app.listen(config.port, () => {
-   console.log(`Server is running on http://localhost:${config.port}`);
-});
+// Start server if not running in Vercel
+if (process.env.VERCEL) {
+  // Export the Express app for Vercel
+  module.exports = app;
+} else {
+  // Start server on all interfaces for local development
+  app.listen(config.port, '0.0.0.0', () => {
+    console.log(`Server is running on http://0.0.0.0:${config.port}`);
+  });
+}
