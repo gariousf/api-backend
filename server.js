@@ -44,6 +44,9 @@ try {
 
 const app = express();
 
+// Trust proxy - add this line to fix the rate limiting issue
+app.set('trust proxy', 1);
+
 // CORS configuration
 app.use(
    cors({
