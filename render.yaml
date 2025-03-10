@@ -2,7 +2,7 @@ services:
   - type: web
     name: billybear-chat-server
     env: node
-    buildCommand: npm install --production
+    buildCommand: chmod +x build.sh && ./build.sh
     startCommand: node server.js
     envVars:
       - key: TOKEN
