@@ -13,7 +13,7 @@ const config = {
    allowedOrigins: [
       'https://www.billybear.fun',  // No trailing slash
       'https://billybear.fun',      // Add non-www version
-      'https://billybear-chat-server.onrender.com', // Add your Render domain
+      'https://billybear-chat-server.vercel.app', // Add Vercel domain
       'http://localhost:80',
       'http://localhost:5500',
       'http://127.0.0.1:5500',
