@@ -25,7 +25,7 @@ const config = {
       max: 60
    },
    gemini: {
-      model: 'gemini-pro',
+      model: 'gemini-1.5-pro',
       maxHistoryLength: 10
    }
 };
@@ -142,6 +142,19 @@ const logRequest = (req, res, next) => {
 // Add this middleware before your routes
 app.use(logRequest);
 
+// Add this function to debug available models
+const listAvailableModels = async () => {
+  try {
+    const models = await genAI.listModels();
+    console.log("Available models:");
+    models.models.forEach(model => {
+      console.log(`- ${model.name} (${model.displayName})`);
+    });
+  } catch (error) {
+    console.error("Error listing models:", error);
+  }
+};
+
 // Modify the chat endpoint to better handle Gemini's context
 app.post('/chat', async (req, res) => {
    try {
@@ -153,6 +166,9 @@ app.post('/chat', async (req, res) => {
 
       // Clean messages
       const cleanedMessages = messages.map((msg) => cleanMessage(msg.message));
+
+      // Call this function before trying to use the model
+      await listAvailableModels();
 
       // Get the model
       const model = genAI.getGenerativeModel({ 
