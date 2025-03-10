@@ -1,0 +1,14 @@
+services:
+  - type: web
+    name: billybear-chat-server
+    env: node
+    buildCommand: npm install --production
+    startCommand: node server.js
+    envVars:
+      - key: TOKEN
+        sync: false
+      - key: PORT
+        value: 10000
+    disk:
+      name: node_modules
+      mountPath: /opt/render/project/node_modules 
