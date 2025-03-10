@@ -228,6 +228,15 @@ app.post('/chat', async (req, res) => {
    }
 });
 
+// Add a health check endpoint
+app.get('/', (req, res) => {
+  res.status(200).send({
+    status: 'ok',
+    message: 'BillyBear Chat Server is running',
+    timestamp: new Date().toISOString()
+  });
+});
+
 // Error handling middleware
 app.use((err, req, res, next) => {
    console.error('Unhandled error:', err);
