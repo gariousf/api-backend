@@ -6,6 +6,13 @@ const rateLimit = require('express-rate-limit');
 const { GoogleGenerativeAI } = require('@google/generative-ai');
 require('dotenv').config();
 
+// Initialize Express app first
+const app = express();
+
+// Set trust proxy IMMEDIATELY after creating the app
+// This must come before any middleware
+app.set('trust proxy', 1);
+
 // Load configuration
 const config = {
    port: process.env.PORT || 4000,
@@ -42,11 +49,6 @@ try {
    process.exit(1);
 }
 
-const app = express();
-
-// Trust proxy - add this line to fix the rate limiting issue
-app.set('trust proxy', 1);
-
 // CORS configuration
 app.use(
    cors({
@@ -74,13 +76,17 @@ app.use(
 
 app.use(bodyParser.json());
 
-// Rate limiting
+// Configure rate limiter with explicit trust proxy settings
 const limiter = rateLimit({
    windowMs: config.rateLimit.windowMs,
    max: config.rateLimit.max,
    message: 'Too many requests from this IP, please try again later.',
    standardHeaders: true,
-   legacyHeaders: false
+   legacyHeaders: false,
+   // Explicitly set the key generator to use the correct IP
+   keyGenerator: (req) => {
+      return req.ip || req.connection.remoteAddress;
+   }
 });
 
 app.use('/chat', limiter);
@@ -267,29 +273,33 @@ app.post('/chat', async (req, res) => {
    } catch (error) {
       console.error('Error in chat endpoint:', error);
       
-      if (error.message?.includes('429') || error.message?.includes('quota')) {
-         try {
-            const fallbackResponse = await getResponseFromFallbackService(
-               recentMessages[recentMessages.length - 1]
-            );
-            return res.json({ reply: fallbackResponse });
-         } catch (fallbackError) {
-            console.error('Fallback service also failed:', fallbackError);
-            return res.status(503).json({ 
-               error: 'Service temporarily unavailable. Please try again later.'
-            });
-         }
-      }
+      // Create a friendly variable to store the user's message for fallback responses
+      const userMessage = req.body.messages && req.body.messages.length > 0 
+         ? req.body.messages[req.body.messages.length - 1].message 
+         : "your question";
       
-      // More specific error handling
-      if (error.message?.includes('SAFETY')) {
-         return res.status(400).json({ 
-            error: 'I apologize, but I cannot provide a response to that query. Please try rephrasing your question in a more appropriate way.'
+      // Handle different error types with friendly responses
+      if (error.message?.includes('429') || error.message?.includes('quota') || error.message?.includes('exhausted')) {
+         return res.json({ 
+            reply: "I'm having a little difficulty processing requests right now. Could you try again in a few moments? My systems need a quick breather! 🐻"
          });
       }
       
-      res.status(500).json({ 
-         error: 'I encountered an issue processing your request. Please try again with a different question.'
+      if (error.message?.includes('SAFETY')) {
+         return res.json({ 
+            reply: "I'm having a little trouble with that question. Could you try asking something else? I'd be happy to help with another topic! 🐻"
+         });
+      }
+      
+      if (error.message?.includes('timeout') || error.message?.includes('network')) {
+         return res.json({ 
+            reply: "Oops! My connection is a bit fuzzy at the moment. Could you try again? I'm eager to continue our conversation! 🐻"
+         });
+      }
+      
+      // Default friendly response for any other errors
+      return res.json({ 
+         reply: "I seem to be having a little difficulty right now. Could you try asking again in a different way? I'm still learning! 🐻"
       });
    }
 });
