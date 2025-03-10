@@ -25,7 +25,7 @@ const config = {
       max: 60
    },
    gemini: {
-      model: 'gemini-1.0-flash',
+      model: 'gemini-1.5-flash',
       maxHistoryLength: 10
    }
 };
